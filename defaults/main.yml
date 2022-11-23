@@ -1,0 +1,63 @@
+---
+# The OS target for the binary.
+flux_os: "linux"
+
+# The version of the binary can be a specific version such as: "0.37.0".
+flux_version: "latest"
+
+# The owner of the installed binary.
+flux_owner: "root"
+
+# The group of the installed binary.
+flux_group: "root"
+
+# The permissions of the installed binary.
+flux_mode: 0755
+
+# The permissions of the binary directory.
+flux_bin_dir_mode: 0755
+
+# The directory to install the binary in.
+flux_bin_dir: "/usr/local/share/flux"
+
+# The full path to the binary.
+flux_bin_path: "{{ flux_bin_dir }}/flux"
+
+# The symlink path created to the binary.
+flux_link_path: "/usr/local/bin/flux"
+
+# The directory the file will be downloaded in.
+flux_download_dir: "/tmp"
+
+# The full path to the downloaded file.
+flux_download_path: "{{ flux_download_dir }}/flux.tar.gz"
+
+# The URL to the repository.
+flux_repo_url: "https://github.com/fluxcd/flux2"
+
+# The URL to the file.
+flux_file_url: "{{ flux_repo_url }}/releases/download/v{{ flux_version }}/flux_{{ flux_version }}_{{ flux_os }}_{{ flux_architecture }}.tar.gz"
+
+# The URL to fetch the latest version from.
+flux_version_url: "https://api.github.com/repos/fluxcd/flux2/releases/latest"
+
+# The URL to the checksum of the file.
+flux_checksum_url: "{{ flux_repo_url }}/releases/download/v{{ flux_version }}/flux_{{ flux_version }}_checksums.txt"
+
+# The architecture target for the binary.
+flux_architecture: "{{ flux_architecture_map[ansible_architecture] }}"
+
+# The architecture map used to set the correct name according to the
+# repository file names.
+flux_architecture_map:
+  {
+    "aarch": "arm64",
+    "aarch64": "arm64",
+    "amd64": "amd64",
+    "arm64": "arm64",
+    "armhf": "armhf",
+    "armv7l": "armhf",
+    "ppc64le": "ppc64le",
+    "s390x": "s390x",
+    "x86_64": "amd64",
+  }

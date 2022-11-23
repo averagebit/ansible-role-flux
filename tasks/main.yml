@@ -1,0 +1,95 @@
+---
+- name: Check if binary exists
+  ansible.builtin.stat:
+    path: "{{ flux_bin_path }}"
+  register: flux_bin
+
+- name: Get current version
+  ansible.builtin.command: "{{ flux_bin_path }} --version"
+  failed_when: false
+  changed_when: false
+  register: flux_current_version
+
+- name: Get latest version
+  block:
+    - name: Get latest version
+      ansible.builtin.uri:
+        url: "{{ flux_version_url }}"
+        return_content: true
+        body_format: json
+      register: flux_latest_version
+
+    - name: Set latest version fact
+      ansible.builtin.set_fact:
+        flux_version: "{{ flux_latest_version.json.tag_name | regex_replace('^v', '') }}"
+  when: flux_version == "latest"
+
+- name: Download file
+  block:
+    - name: Get checksum
+      ansible.builtin.uri:
+        url: "{{ flux_checksum_url }}"
+        return_content: yes
+      register: flux_checksum
+
+    - name: Set checksum regex fact
+      ansible.builtin.set_fact:
+        flux_checksum_regex: "(.+)  flux_{{ flux_version }}_{{ flux_os }}_{{ flux_architecture }}\\.tar\\.gz"
+
+    - name: Set checksum fact
+      ansible.builtin.set_fact:
+        flux_checksum: "{{ flux_checksum.content | regex_search(flux_checksum_regex, '\\1') }}"
+
+    - name: Download file
+      ansible.builtin.get_url:
+        url: "{{ flux_file_url }}"
+        dest: "{{ flux_download_path }}"
+        checksum: "sha256:{{ flux_checksum }}"
+        owner: "{{ flux_owner }}"
+        group: "{{ flux_group }}"
+        mode: "{{ flux_mode }}"
+        force: true
+      register: flux_download
+  when: >
+    not flux_bin.stat.exists
+    or flux_version not in flux_current_version.stdout
+
+- name: Install binary
+  block:
+    - name: Ensure bin directory exists
+      ansible.builtin.file:
+        path: "{{ flux_bin_dir }}"
+        owner: "{{ flux_owner }}"
+        group: "{{ flux_group }}"
+        mode: "{{ flux_bin_dir_mode }}"
+        state: directory
+
+    - name: Remove old version
+      ansible.builtin.file:
+        path: "{{ flux_bin_path }}"
+        state: absent
+
+    - name: Extract archive
+      ansible.builtin.unarchive:
+        src: "{{ flux_download_path }}"
+        dest: "{{ flux_bin_dir }}"
+        creates: "{{ flux_bin_path }}"
+        owner: "{{ flux_owner }}"
+        group: "{{ flux_group }}"
+        remote_src: true
+
+    - name: Remove archive
+      ansible.builtin.file:
+        path: "{{ flux_download_path }}"
+        state: absent
+
+    - name: Create symlink
+      ansible.builtin.file:
+        src: "{{ flux_bin_path }}"
+        dest: "{{ flux_link_path }}"
+        owner: "{{ flux_owner }}"
+        group: "{{ flux_group }}"
+        mode: "{{ flux_mode }}"
+        force: true
+        state: link
+  when: flux_download is changed
